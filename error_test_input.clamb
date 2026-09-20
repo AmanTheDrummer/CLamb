@@ -1,0 +1,11 @@
+// Lexical-error demonstration for CLamb (each error must be reported, scanning must continue)
+int ok = 1;
+float bad1 = 3.;
+float bad2 = 3.14abc;
+float fine = 3.14_x;
+char e1 = '';
+char e2 = 'ab';
+bool n = a ! b;
+int at = 5 @ 6;
+x = 2sum + 7;
+string s = "unterminated

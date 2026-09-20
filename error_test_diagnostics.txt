@@ -1,0 +1,8 @@
+Lexical Error (line 3): malformed float literal '3.' (digit required after '.')
+Lexical Error (line 4): invalid float literal '3.14' followed by a letter
+Lexical Error (line 6): empty or unterminated char literal
+Lexical Error (line 7): malformed/unterminated char literal 'a'
+Lexical Error (line 7): malformed/unterminated char literal ';'
+Lexical Error (line 8): '!' is not a valid standalone token (expected '!=')
+Lexical Error (line 9): unrecognized character '@'
+Lexical Error (line 11): unterminated string literal '"unterminated\n'

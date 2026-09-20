@@ -1,0 +1,28 @@
+// CLamb representative test program
+// Demonstrates every token category in the specification
+
+int total = 7;
+float pi = 3.14;
+bool flag = true;
+auto 2sum = total + 5;
+
+if (total >= 5 AND flag == true) {
+    print("hi");
+} else {
+    x = 5;
+    a < b;
+}
+
+char c = 'a';
+string s = "hello world";
+
+y = a / b;          // ordinary division
+z = a // this comment eats the rest of the line
+    + 1;
+
+lamb add(int x, int y) {
+    return x + y;
+}
+
+ptr = &total;
+arr[0] = 10;
