@@ -24,13 +24,13 @@ On Windows, this creates `clamb_lexer.exe`.
 Scan a source file:
 
 ```text
-clamb_lexer.exe 4_test_input.clamb
+./clamb_lexer.exe 4_test_input.clamb
 ```
 
 Run the lexer interactively through standard input:
 
 ```text
-clamb_lexer.exe
+./clamb_lexer.exe
 ```
 
 Then type CLamb source and press `Ctrl+Z`, followed by Enter, to signal end-of-file in Windows PowerShell.
