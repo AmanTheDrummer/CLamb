@@ -1,0 +1,13 @@
+int count = 0;
+
+count = count + 1;
+
+int main() {
+    int x = 5
+    
+    if x > 0 {
+        print("Positive");
+    }
+    
+    return 0;
+}

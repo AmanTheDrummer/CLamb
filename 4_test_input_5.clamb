@@ -1,0 +1,28 @@
+int fibonacci(int n) {
+    if (n <= 1) {
+        return n;
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+int main() {
+    int sequence[10];
+    int idx = 0;
+    
+    while (idx < 10) {
+        sequence[idx] = fibonacci(idx);
+        idx = idx + 1;
+    }
+
+    auto extract_ptr = lamb(int* arr, int pos) {
+        return &arr[pos];
+    };
+
+    int* target = extract_ptr(sequence, 5);
+    
+    if (*target != null) {
+        print("Value at index 5:", *target);
+    }
+
+    return 0;
+}
