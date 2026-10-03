@@ -1,0 +1,52 @@
+int global_var = 42;
+float global_float = 3.14;
+string msg = "Comprehensive CLamb Test";
+char letter = 'A';
+bool flag = false;
+
+void test_control_flow(int count) {
+    int i;
+    
+    for (i = 0; i < count; i = i + 1) {
+        if (i % 2 == 0) {
+            print("Even", i);
+        } else if (i < 0) {
+            print("Negative");
+        } else {
+            print("Odd");
+        }
+    }
+    
+    for ( ; count > 0; ) {
+        count = count - 1;
+    }
+    
+    while (count <= 0 AND NOT flag) {
+        flag = true;
+    }
+    
+    return;
+}
+
+int main() {
+    int arr[5];
+    int* ptr = malloc(10);
+    auto x = 5;
+    int* addr = &x;
+
+    auto advanced_math = lamb(int a, int b) {
+        return a * b + (a / b) - a % b;
+    };
+
+    arr[0] = advanced_math(10, 2);
+    *ptr = arr[0] + *addr;
+
+    if (*ptr != null OR flag == true) {
+        test_control_flow(*ptr);
+    }
+
+    ; 
+    
+    free(ptr);
+    return 0;
+}

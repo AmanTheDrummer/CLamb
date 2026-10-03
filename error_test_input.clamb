@@ -8,4 +8,6 @@ char e2 = 'ab';
 bool n = a ! b;
 int at = 5 @ 6;
 x = 2sum + 7;
+lamb noop() { retrun x; }
+if (a == b) { print("kw stays intact near an error @ here"); }
 string s = "unterminated

@@ -28,16 +28,23 @@ def run(src, stdin=False):
     other_err = [l for l in p.stderr.decode('latin-1').splitlines() if l and not l.startswith('Lexical Error')]
     return toks, errs, other_err, p.returncode
 
-I,K,D,B,L = 'identifier','keyword','data_type','boolean_literal','logical_op'
+I,D,B = 'identifier','data_type','boolean_literal'
+AND, OR, NOT = 'and_op','or_op','not_op'
+EQ, NE, LT, LE, GT, GE = 'eq_op','ne_op','lt_op','le_op','gt_op','ge_op'
+KW = {w: 'kw_'+w for w in ('if','else','for','while','return','lamb','null','print','malloc','free')}
 tests = [
- ("relational ops", "a<=b>=c==d!=e<f>g=h", [(I,'a'),('relational_op','<='),(I,'b'),('relational_op','>='),(I,'c'),('relational_op','=='),(I,'d'),('relational_op','!='),(I,'e'),('relational_op','<'),(I,'f'),('relational_op','>'),(I,'g'),('assignment_op','='),(I,'h')], 0),
+ ("relational ops", "a<=b>=c==d!=e<f>g=h", [(I,'a'),(LE,'<='),(I,'b'),(GE,'>='),(I,'c'),(EQ,'=='),(I,'d'),(NE,'!='),(I,'e'),(LT,'<'),(I,'f'),(GT,'>'),(I,'g'),('assignment_op','='),(I,'h')], 0),
  ("punctuators+ops", "(){}[];,+-*%&/", [('l_paren','('),('r_paren',')'),('l_brace','{'),('r_brace','}'),('l_bracket','['),('r_bracket',']'),('semicolon',';'),('comma',','),('add_op','+'),('add_op','-'),('asterisk','*'),('mul_op','%'),('address_op','&'),('mul_op','/')], 0),
  ("comment at EOF no newline", "x=a//c", [(I,'x'),('assignment_op','='),(I,'a')], 0),
  ("comment only", "//only a comment", [], 0),
  ("comment then next line", "//c\nx", [(I,'x')], 0),
  ("identifiers/numbers", "2sum _temp my_var __ 007 3.14 0.5 9_9", [(I,'2sum'),(I,'_temp'),(I,'my_var'),(I,'__'),('integer_literal','007'),('float_literal','3.14'),('float_literal','0.5'),(I,'9_9')], 0),
  ("all keywords/types/bools/logical", "if else for while return lamb null print malloc free int float char bool string void auto true false AND OR NOT and Int",
-   [(K,w) for w in "if else for while return lamb null print malloc free".split()]+[(D,w) for w in "int float char bool string void auto".split()]+[(B,'true'),(B,'false')]+[(L,'AND'),(L,'OR'),(L,'NOT'),(I,'and'),(I,'Int')], 0),
+   [(KW[w],w) for w in "if else for while return lamb null print malloc free".split()]+[(D,w) for w in "int float char bool string void auto".split()]+[(B,'true'),(B,'false')]+[(AND,'AND'),(OR,'OR'),(NOT,'NOT'),(I,'and'),(I,'Int')], 0),
+ ("each keyword gets its own distinct class", "if else for while return lamb null print malloc free",
+   [(KW[w],w) for w in "if else for while return lamb null print malloc free".split()], 0),
+ ("keywords are not mutually substitutable (spot check)", "if",  [('kw_if','if')], 0),
+ ("free keyword value has no PDF typo (not 'freef')", "free", [('kw_free','free')], 0),
  ("keyword prefixes are identifiers", "iffy printx truex ANDY intx", [(I,'iffy'),(I,'printx'),(I,'truex'),(I,'ANDY'),(I,'intx')], 0),
  ("strings", '"a b // c" "" "x"', [('string_literal','"a b // c"'),('string_literal','""'),('string_literal','"x"')], 0),
  ("multiline string", '"l1\nl2"', [('string_literal','"l1\nl2"')], 0),
@@ -60,7 +67,7 @@ tests = [
  ("S7: 'a at EOF", "'a", [], 1),
  ("S11: lone !", "a!b", [(I,'a'),(I,'b')], 1),
  ("S11: ! at EOF", "!", [], 1),
- ("S11: != still ok", "a!=b", [(I,'a'),('relational_op','!='),(I,'b')], 0),
+ ("S11: != still ok", "a!=b", [(I,'a'),(NE,'!='),(I,'b')], 0),
  ("S5: unterminated string", '"abc', [], 1),
  ("S5: unterminated string swallows rest of file (spec: any char stays in S5)", 'x "abc\ny', [(I,'x')], 1),
  ("S0: stray @", "@ y", [(I,'y')], 1),

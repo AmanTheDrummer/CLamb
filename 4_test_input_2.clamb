@@ -1,5 +1,5 @@
 // CLamb representative test program
-// Demonstrates every token category in the specification
+// Demonstrates every token category, including all ten unique keyword classes
 
 int total = 7;
 float pi = 3.14;
@@ -9,8 +9,16 @@ auto 2sum = total + 5;
 if (total >= 5 AND flag == true) {
     print("hi");
 } else {
-    x = 5;
+    x = 5 ++++++++ 7;
     a < b;
+}
+
+for (i = 0; i < 10; i = i + 1) {
+    print(i);
+}
+
+while (total != 0) {
+    total = total - 1;
 }
 
 char c = 'a';
@@ -24,5 +32,14 @@ lamb add(int x, int y) {
     return x + y;
 }
 
+lamb make_counter() {
+    return null;
+}
+
+void* buf = malloc(64);
+free(buf);
+
 ptr = &total;
 arr[0] = 10;
+
+bool done = NOT flag OR (a == b);

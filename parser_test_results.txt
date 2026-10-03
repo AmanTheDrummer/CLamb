@@ -1,0 +1,15 @@
+PASS parser_valid_1.clamb
+  Parse successful.
+PASS parser_valid_2.clamb
+  Parse successful.
+PASS parser_invalid_1.clamb
+  Syntax Error at line 1: expected a parameter declaration or ')' but found l_brace ('{')
+PASS parser_invalid_2.clamb
+  Syntax Error at line 2: expected an expression operand but found semicolon (';')
+PASS parser_invalid_3.clamb
+  Syntax Error at line 1: expected a top-level declaration or end of file but found identifier ('x')
+PASS parser_invalid_lexical.clamb
+  Lexical Error (line 2): unrecognized character '@'
+  Parse rejected: lexer reported 1 lexical error(s)
+
+TOTAL FAILURES: 0

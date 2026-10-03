@@ -23,11 +23,10 @@
  * accept/error decision comes from the table. The only lookup tables
  * built with simple loops are:
  *   (a) char_class_of[256]      -- maps a raw byte to a character class
- *   (b) the Reserved Keywords Table (keywords/data_types/booleans/
- *       logical_ops arrays) -- a dictionary lookup once an identifier
- *       has already been *recognized* by the DFA, exactly the way a
- *       real compiler front end (e.g. flex + a keyword hash table)
- *       does it.
+ *   (b) the reserved-word/data-type/boolean/operator lookup tables --
+ *       a dictionary lookup once an identifier has already been
+ *       *recognized* by the DFA, exactly the way a real compiler front
+ *       end (e.g. flex + a keyword hash table) does it.
  *
  * ERROR HANDLING (per the CLamb Lexical Specification, Section 2)
  * ----------------------------------------------------------------
@@ -45,18 +44,24 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-
-#define MAX_LEXEME 256
+#include "clamb_lexer.h"
 
 // Here we are defining the vocabulary of the Clamb Language.
 typedef enum {
-    CLASS_LETTER = 0, CLASS_DIGIT, CLASS_UNDERSCORE, CLASS_DQUOTE, CLASS_SQUOTE,
-    CLASS_EQUALS, CLASS_LESS, CLASS_GREATER, CLASS_BANG, CLASS_SLASH,
-    CLASS_ADDSUB, CLASS_STAR, CLASS_PERCENT, CLASS_AMP,
-    CLASS_LPAREN, CLASS_RPAREN, CLASS_LBRACE, CLASS_RBRACE,
-    CLASS_LBRACKET, CLASS_RBRACKET, CLASS_SEMI, CLASS_COMMA, CLASS_DOT,
-    CLASS_NEWLINE, CLASS_WS, CLASS_OTHER, CLASS_EOF,
-    NUM_CLASSES
+    CLASS_LETTER = 0, CLASS_DIGIT, 
+    CLASS_UNDERSCORE, CLASS_DQUOTE, 
+    CLASS_SQUOTE, CLASS_EQUALS, 
+    CLASS_LESS, CLASS_GREATER, 
+    CLASS_BANG, CLASS_SLASH,
+    CLASS_ADDSUB, CLASS_STAR, 
+    CLASS_PERCENT, CLASS_AMP,
+    CLASS_LPAREN, CLASS_RPAREN, 
+    CLASS_LBRACE, CLASS_RBRACE,
+    CLASS_LBRACKET, CLASS_RBRACKET, 
+    CLASS_SEMI, CLASS_COMMA, 
+    CLASS_DOT, CLASS_NEWLINE, 
+    CLASS_WS, CLASS_OTHER, 
+    CLASS_EOF, NUM_CLASSES
 } CharClass;
 
 // Defining the DFA States of the Clamb Language.
@@ -80,30 +85,22 @@ typedef enum {
     NUM_STATES
 } State;
 
-typedef enum {
-    TOK_NONE,           /* internal: non-accepting transition        */
-    TOK_DYNAMIC_IDENT,  /* internal: resolve via reserved-word lookup */
-    TOK_DATA_TYPE, TOK_KEYWORD, TOK_IDENTIFIER, TOK_INTEGER_LITERAL,
-    TOK_FLOAT_LITERAL, TOK_CHAR_LITERAL, TOK_STRING_LITERAL, TOK_BOOLEAN_LITERAL,
-    TOK_ADD_OP, TOK_MUL_OP, TOK_ASTERISK, TOK_LOGICAL_OP, TOK_RELATIONAL_OP,
-    TOK_ASSIGNMENT_OP, TOK_ADDRESS_OP, TOK_L_PAREN, TOK_R_PAREN, TOK_L_BRACE,
-    TOK_R_BRACE, TOK_L_BRACKET, TOK_R_BRACKET, TOK_SEMICOLON, TOK_COMMA,
-    TOK_EOF
-} TokenType;
-
-typedef struct {
-    TokenType type;
-    char lexeme[MAX_LEXEME];
-} Token;
-
-
 // Final labels given to a completed chunk of text.
 // These are the "token classes" that the parser will see.
-static const char *token_type_name(TokenType t) {
+const char *clamb_token_type_name(TokenType t) {
     switch (t) { /* purely cosmetic: printable label for output, NOT
                     used anywhere for recognition/dispatch */
         case TOK_DATA_TYPE:       return "data_type";
-        case TOK_KEYWORD:         return "keyword";
+        case TOK_KW_IF:           return "kw_if";
+        case TOK_KW_ELSE:         return "kw_else";
+        case TOK_KW_FOR:          return "kw_for";
+        case TOK_KW_WHILE:        return "kw_while";
+        case TOK_KW_RETURN:       return "kw_return";
+        case TOK_KW_LAMB:         return "kw_lamb";
+        case TOK_KW_NULL:         return "kw_null";
+        case TOK_KW_PRINT:        return "kw_print";
+        case TOK_KW_MALLOC:       return "kw_malloc";
+        case TOK_KW_FREE:         return "kw_free";
         case TOK_IDENTIFIER:      return "identifier";
         case TOK_INTEGER_LITERAL: return "integer_literal";
         case TOK_FLOAT_LITERAL:   return "float_literal";
@@ -113,8 +110,15 @@ static const char *token_type_name(TokenType t) {
         case TOK_ADD_OP:          return "add_op";
         case TOK_MUL_OP:          return "mul_op";
         case TOK_ASTERISK:        return "asterisk";
-        case TOK_LOGICAL_OP:      return "logical_op";
-        case TOK_RELATIONAL_OP:   return "relational_op";
+        case TOK_AND_OP:          return "and_op";
+        case TOK_OR_OP:           return "or_op";
+        case TOK_NOT_OP:          return "not_op";
+        case TOK_EQ_OP:           return "eq_op";
+        case TOK_NE_OP:           return "ne_op";
+        case TOK_LT_OP:           return "lt_op";
+        case TOK_LE_OP:           return "le_op";
+        case TOK_GT_OP:           return "gt_op";
+        case TOK_GE_OP:           return "ge_op";
         case TOK_ASSIGNMENT_OP:   return "assignment_op";
         case TOK_ADDRESS_OP:      return "address_op";
         case TOK_L_PAREN:         return "l_paren";
@@ -131,9 +135,23 @@ static const char *token_type_name(TokenType t) {
 }
 
 // Reserved keywords, data types, boolean literals, and logical operators in the CLamb language.
-static const char *keywords[]    = {"if","else","for","while","return",
-                                     "lamb","null","print","malloc","free"};
-static const int num_keywords    = 10;
+// Per the updated CLamb Lexical Specification, every keyword is now its own
+// token class (kw_if, kw_else, ...) rather than a single shared "keyword"
+// class -- keywords are not interchangeable, so each gets a distinct class.
+typedef struct { const char *lexeme; TokenType type; } KeywordEntry;
+static const KeywordEntry keyword_table[] = {
+    {"if",     TOK_KW_IF},
+    {"else",   TOK_KW_ELSE},
+    {"for",    TOK_KW_FOR},
+    {"while",  TOK_KW_WHILE},
+    {"return", TOK_KW_RETURN},
+    {"lamb",   TOK_KW_LAMB},
+    {"null",   TOK_KW_NULL},
+    {"print",  TOK_KW_PRINT},
+    {"malloc", TOK_KW_MALLOC},
+    {"free",   TOK_KW_FREE},
+};
+static const int num_keyword_entries = (int)(sizeof(keyword_table) / sizeof(keyword_table[0]));
 
 static const char *data_types[]  = {"int","float","char","bool",
                                      "string","void","auto"};
@@ -142,19 +160,19 @@ static const int num_data_types  = 7;
 static const char *booleans[]    = {"true","false"};
 static const int num_booleans    = 2;
 
-static const char *logical_ops[] = {"AND","OR","NOT"};
-static const int num_logical_ops = 3;
-
 static int in_set(const char *lexeme, const char **set, int n) {
     for (int i = 0; i < n; i++) if (strcmp(lexeme, set[i]) == 0) return 1;
     return 0;
 }
 
 static TokenType classify_identifier(const char *lexeme) {
-    if (in_set(lexeme, keywords, num_keywords))       return TOK_KEYWORD;
+    for (int i = 0; i < num_keyword_entries; i++)
+        if (strcmp(lexeme, keyword_table[i].lexeme) == 0) return keyword_table[i].type;
     if (in_set(lexeme, data_types, num_data_types))   return TOK_DATA_TYPE;
     if (in_set(lexeme, booleans, num_booleans))       return TOK_BOOLEAN_LITERAL;
-    if (in_set(lexeme, logical_ops, num_logical_ops)) return TOK_LOGICAL_OP;
+    if (strcmp(lexeme, "AND") == 0) return TOK_AND_OP;
+    if (strcmp(lexeme, "OR") == 0) return TOK_OR_OP;
+    if (strcmp(lexeme, "NOT") == 0) return TOK_NOT_OP;
     return TOK_IDENTIFIER;
 }
 
@@ -319,22 +337,22 @@ static void init_transition_table(void) {
 
     /* ---------------- S8 : saw '=' ---------------- */
     set_row(S8, S0, 0, 1, 1, TOK_ASSIGNMENT_OP);   /* default: lone '='   */
-    set(S8, CLASS_EQUALS, S0, 1, 0, 1, TOK_RELATIONAL_OP); /* "=="        */
+    set(S8, CLASS_EQUALS, S0, 1, 0, 1, TOK_EQ_OP); /* "=="        */
     set(S8, CLASS_EOF,    S0, 0, 0, 1, TOK_ASSIGNMENT_OP);
 
     /* ---------------- S9 : saw '<' ---------------- */
-    set_row(S9, S0, 0, 1, 1, TOK_RELATIONAL_OP);   /* default: lone '<'   */
-    set(S9, CLASS_EQUALS, S0, 1, 0, 1, TOK_RELATIONAL_OP); /* "<="        */
-    set(S9, CLASS_EOF,    S0, 0, 0, 1, TOK_RELATIONAL_OP);
+    set_row(S9, S0, 0, 1, 1, TOK_LT_OP);   /* default: lone '<'   */
+    set(S9, CLASS_EQUALS, S0, 1, 0, 1, TOK_LE_OP); /* "<="        */
+    set(S9, CLASS_EOF,    S0, 0, 0, 1, TOK_LT_OP);
 
     /* ---------------- S10 : saw '>' ---------------- */
-    set_row(S10, S0, 0, 1, 1, TOK_RELATIONAL_OP);  /* default: lone '>'   */
-    set(S10, CLASS_EQUALS, S0, 1, 0, 1, TOK_RELATIONAL_OP); /* ">="       */
-    set(S10, CLASS_EOF,    S0, 0, 0, 1, TOK_RELATIONAL_OP);
+    set_row(S10, S0, 0, 1, 1, TOK_GT_OP);  /* default: lone '>'   */
+    set(S10, CLASS_EQUALS, S0, 1, 0, 1, TOK_GE_OP); /* ">="       */
+    set(S10, CLASS_EOF,    S0, 0, 0, 1, TOK_GT_OP);
 
     /* ---------------- S11 : saw '!' ---------------- */
     set_row(S11, S_ERROR, 0, 1, 0, TOK_NONE);      /* lone '!': S_Error, pushback */
-    set(S11, CLASS_EQUALS, S0, 1, 0, 1, TOK_RELATIONAL_OP); /* "!="       */
+    set(S11, CLASS_EQUALS, S0, 1, 0, 1, TOK_NE_OP); /* "!="       */
     set(S11, CLASS_EOF,    S_ERROR, 0, 0, 0, TOK_NONE);
 
     /* ---------------- S12 : saw '/' ---------------- */
@@ -371,6 +389,7 @@ static void init_transition_table(void) {
 /* ================================================================== */
 static FILE *src;
 static int line_number = 1;
+static int lexical_error_count;
 
 // Reads the next character from the input stream, updating the line number if a newline is encountered.
 static int next_char(void) {
@@ -405,6 +424,7 @@ static void esc(const char *lx, char *out, size_t n) {
 // Prints a diagnostic message for a malformed lexeme, based on the state it was in when the error was detected.
 // These are case specific hence handled using switch cases.
 static void report_error(State from, const char *raw_lexeme, int c, int at_line) {
+    lexical_error_count++;
     char lexeme[2 * MAX_LEXEME + 4];
     esc(raw_lexeme, lexeme, sizeof lexeme);
     switch (from) {
@@ -445,7 +465,19 @@ static void report_error(State from, const char *raw_lexeme, int c, int at_line)
 // This is the core engine.
 // Reads a new token from input stream, builds, recognizes, and returns the token structure.
 // Uses the DFA transition table to drive the recognition process.
-static Token get_next_token(void) {
+void clamb_lexer_init(FILE *input) {
+    init_char_classes();
+    init_transition_table();
+    src = input;
+    line_number = 1;
+    lexical_error_count = 0;
+}
+
+int clamb_lexer_error_count(void) {
+    return lexical_error_count;
+}
+
+Token clamb_lexer_next_token(void) {
     State state = S0;
     char lexeme[MAX_LEXEME];
     int idx = 0;
@@ -480,6 +512,7 @@ static Token get_next_token(void) {
                        : t.type;
             strncpy(tok.lexeme, lexeme, MAX_LEXEME - 1);
             tok.lexeme[MAX_LEXEME - 1] = '\0';
+            tok.line = start_line;
             return tok;
         }
 
@@ -491,11 +524,9 @@ static Token get_next_token(void) {
 }
 
 
+#ifndef CLAMB_LEXER_NO_MAIN
 // Reads a file and tokenizes it, printing each token class and lexeme to stdout.
 int main(int argc, char **argv) {
-    init_char_classes();
-    init_transition_table();
-
     if (argc < 2) {
         src = stdin;
     } else {
@@ -505,18 +536,20 @@ int main(int argc, char **argv) {
             return 1;
         }
     }
+    clamb_lexer_init(src);
 
     printf("%-18s %s\n", "TOKEN CLASS", "LEXEME");
     printf("----------------------------------------\n");
 
     Token tok;
     do {
-        tok = get_next_token();
+        tok = clamb_lexer_next_token();
         if (tok.type != TOK_EOF) {
-            printf("<%-16s, %s>\n", token_type_name(tok.type), tok.lexeme);
+            printf("<%-16s, %s>\n", clamb_token_type_name(tok.type), tok.lexeme);
         }
     } while (tok.type != TOK_EOF);
 
     if (src != stdin) fclose(src);
     return 0;
 }
+#endif

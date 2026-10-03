@@ -1,0 +1,10 @@
+int main() {
+    int total = 7;
+    bool ready = true;
+    if (total >= 5 AND NOT false OR ready == true) {
+        print("ready", total);
+    } else {
+        print("wait");
+    }
+    return total;
+}
