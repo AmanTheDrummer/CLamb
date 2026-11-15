@@ -21,16 +21,16 @@ On Windows, this creates `clamb_lexer.exe`.
 
 ## Run
 
-Scan a source file:
+Scan a source file (the fixtures are in `parser tests`):
 
 ```text
-./clamb_lexer.exe 4_test_input.clamb
+.\clamb_lexer.exe "parser tests\4_test_input_2.clamb"
 ```
 
 Run the lexer interactively through standard input:
 
 ```text
-./clamb_lexer.exe
+.\clamb_lexer.exe
 ```
 
 Then type CLamb source and press `Ctrl+Z`, followed by Enter, to signal end-of-file in Windows PowerShell.
@@ -74,7 +74,7 @@ revised language. `&`, `[` and `]` are reported as unrecognized characters;
 Run the lexer behavior tests:
 
 ```text
-python run_tests.py
+python "parser tests\run_tests.py"
 ```
 
 The test suite covers valid tokens, comments, whitespace, standard input, malformed literals, error recovery, diagnostic line numbers, oversized lexemes, and missing files.
@@ -82,60 +82,91 @@ The test suite covers valid tokens, comments, whitespace, standard input, malfor
 Verify the DFA table against the independent transcription of the lexical specification:
 
 ```text
-python verify_table.py
+python "parser tests\verify_table.py"
 ```
 
 A successful verification reports zero transition and token-class mismatches.
 
-Example inputs and expected diagnostics are included in:
+Parser/lexer test inputs are in `parser tests`; expected diagnostics are in:
 
-- `4_test_input.clamb`
-- `error_test_input.clamb`
+- `parser tests\4_test_input_2.clamb` through `parser tests\4_test_input_6.clamb`
+- `parser tests\error_test_input.clamb`
 - `error_test_diagnostics.txt`
 
 ## Specification references
 
-- `Lexical Specification - CLamb.pdf` defines the token rules and DFA behavior.
-- `Revised Grammar & Parser - CLamb.pdf` defines the reduced LL(k) grammar.
-- `Compiler Construction Project Proposal Aman.pdf` describes the planned CLamb language and its broader parser/compiler features.
+- `documentation\Lexical Specification - CLamb.pdf` defines the token rules and DFA behavior.
+- `documentation\Revised Grammar & Parser - CLamb.pdf` defines the reduced LL(k) grammar.
+- `documentation\Compiler Construction Project Proposal Aman.pdf` describes the planned CLamb language and its broader parser/compiler features.
 - `2_dfa_transition_table.md` documents the implemented DFA in readable table form.
 
-Type checking, code generation, and the semantics of lambdas belong to later compiler stages proposed in the project document.
+Code generation remains outside this milestone. The parser now performs semantic
+type checking, scope resolution, function-call validation, and the documented
+non-capturing lambda checks.
 
 ## Parser
 
 Build the parser together with the lexer implementation:
 
 ```text
-gcc -std=c11 -Wall -Wextra -DCLAMB_LEXER_NO_MAIN -o clamb_parser clamb_parser.c clamb_lexer.c
+gcc -std=c11 -Wall -Wextra -DCLAMB_LEXER_NO_MAIN -o clamb_parser clamb_parser.c clamb_semantic.c clamb_lexer.c
 ```
 
-Parse a source file or read from standard input:
+Parse a source file or read from standard input. Quote the source path because
+the test folders contain spaces:
 
 ```text
-./clamb_parser source.clamb
-./clamb_parser
+.\clamb_parser.exe "parser tests\parser_valid_1.clamb"
+.\clamb_parser.exe "semantic tests\semantic_valid_test.clamb"
+.\clamb_parser.exe
 ```
 
-The parser consumes the lexer's `Token` API from `clamb_lexer.h`. Syntax errors
-include the line, expected construct, and found token. Lexical errors are
-reported by the lexer and cause the overall parse to fail.
+The parser consumes the lexer’s `Token` API from `clamb_lexer.h` and runs
+semantic actions from `clamb_semantic.c` during recursive descent. It maintains
+nested symbol scopes, checks expression and statement types and function calls,
+and reports lexical, syntax, and semantic errors with line and column. Normal
+mode requires both syntactic and semantic validity. `--syntax-only` is available
+for grammar-focused parser tests.
 
 Run the parser integration tests. They build the parser in a temporary
-directory and exercise the valid and invalid fixtures, a lexical-error case,
-and focused cases for the revised grammar (including top-level-only function
-declarations, recursive functions, lambda expressions, control flow, chained
-calls, rejection of pointers and arrays, LL(k) nonterminal/function-count
-parity, and the `else_opt` k=2 lookahead):
+directory and exercise the grammar in syntax-only mode, including top-level-only
+function declarations, recursive functions, lambda syntax, control flow,
+chained calls, rejection of pointers and arrays, semantic parser entry points,
+and the `else_opt` k=2 lookahead:
 
 ```text
-python parser_tests.py
+python "parser tests\parser_tests.py"
+python "semantic tests\semantic_tests.py"
 ```
 
-The recorded output is in `parser_test_results.txt`. The grammar audit is in
-`parser_grammar_review.md`.
+`semantic_tests.py` checks valid programs, applicable semantic error categories,
+the documented declaration/scope/function decisions, conversions, and
+independent-error recovery.
 
-The PDF lists `4_test_input_3.clamb` and `4_test_input_5.clamb` as valid
+The semantic fixtures are in `semantic tests`:
+
+- `semantic_valid_test.clamb` and `semantic_valid_test_2.clamb`: nested scopes,
+	type-changing shadowing, scope restoration after block exit, calls, control
+	flow, and the supported `int` to `float` and `char` to `string` conversions.
+- `semantic_invalid_test.clamb`: the required semantic error categories, an
+	out-of-scope identifier, and a local that redeclares a function parameter.
+- `semantic_multi_error_test.clamb`: several independent semantic errors in one
+	syntactically valid program, including a type-narrowing initializer.
+
+Run the analyzer on one fixture at a time, for example:
+
+```text
+.\clamb_parser.exe "semantic tests\semantic_valid_test.clamb"
+.\clamb_parser.exe "semantic tests\semantic_invalid_test.clamb"
+```
+
+Valid input prints `Semantic analysis successful.`; invalid input prints
+line-and-column semantic diagnostics and exits with a nonzero status.
+
+The grammar audit is in `parser_grammar_review.md`; implementation decisions
+and semantic rules are summarized in `semantic_implementation.md`.
+
+The grammar PDF lists `4_test_input_3.clamb` and `4_test_input_5.clamb` as valid
 fixtures, but their current contents use arrays and pointers. The reduced
 grammar excludes these forms, so the integration tests verify that both are
 rejected.

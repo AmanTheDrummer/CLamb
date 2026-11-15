@@ -35,10 +35,11 @@ row("S_ERROR", e, (E,False,False), skip=("EOF",))
 
 import subprocess, os, sys, tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
 temp_dir = tempfile.TemporaryDirectory(prefix="clamb-verify-")
 exe = os.path.join(temp_dir.name, "_dump_table" + (".exe" if os.name == "nt" else ""))
-r = subprocess.run(["gcc", "-std=c11", "-o", exe, os.path.join(HERE, "dump.c")], capture_output=True, text=True, cwd=HERE)
-if r.returncode: sys.exit("Could not compile dump.c (needs gcc and clamb_lexer.c in the same folder):\n" + r.stderr)
+r = subprocess.run(["gcc", "-std=c11", "-o", exe, os.path.join(ROOT, "dump.c")], capture_output=True, text=True, cwd=ROOT)
+if r.returncode: sys.exit("Could not compile dump.c (needs gcc and clamb_lexer.c in the project root):\n" + r.stderr)
 dump = subprocess.run([exe], capture_output=True, text=True).stdout
 code = {}
 for l in dump.splitlines():
@@ -56,8 +57,8 @@ import subprocess as _sp
 lexer_exe = os.path.join(temp_dir.name, "clamb_lexer" + (".exe" if os.name == "nt" else ""))
 lexer_build = _sp.run(
     ["gcc", "-std=c11", "-Wall", "-Wextra", "-o", lexer_exe,
-     os.path.join(HERE, "clamb_lexer.c")],
-    capture_output=True, text=True, cwd=HERE,
+     os.path.join(ROOT, "clamb_lexer.c")],
+    capture_output=True, text=True, cwd=ROOT,
 )
 if lexer_build.returncode:
     sys.exit("Could not compile clamb_lexer.c:\n" + lexer_build.stderr)

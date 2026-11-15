@@ -1,0 +1,108 @@
+void global_void_var;
+auto global_uninit_auto;
+
+int forward_call_case() {
+    return declared_later();
+}
+
+int declared_later() {
+    return 42;
+}
+
+int declared_later(int duplicate_overload) {
+    return duplicate_overload;
+}
+
+void void_returning_value_case() {
+    return 10;
+}
+
+int non_void_empty_return_case() {
+    return;
+}
+
+void void_returning_void_expr_case() {
+    return void_returning_value_case();
+}
+
+int void_parameter_case(void bad_param) {
+    return 0;
+}
+
+auto auto_return_type_case(auto auto_param) {
+    return 1;
+}
+
+int auto_inference_cases() {
+    auto missing_init;
+    auto self_ref = self_ref + 1;
+    auto from_null = null;
+    auto from_void = void_returning_value_case();
+    return 0;
+}
+
+int lambda_cases() {
+    int local_secret = 99;
+
+    // Lambdas cannot capture enclosing local variables
+    auto illegal_capture = lamb (int x) {
+        return x + local_secret;
+    };
+
+    // Conflicting return types across branches inside a lambda
+    auto conflicting_returns = lamb (bool flag) {
+        if (flag) {
+            return 1;
+        } else {
+            return "two";
+        }
+    };
+
+    // Calling a valid stored lambda with wrong arguments
+    auto valid_adder = lamb (int a, int b) {
+        return a + b;
+    };
+    int bad_lambda_call = valid_adder("wrong");
+
+    return 0;
+}
+
+int lvalue_and_null_cases() {
+    int narrow_float = 3.14;
+    char narrow_string = "hello";
+    int null_to_int = null;
+    bool bad_null_compare = (null == 5);
+
+    5 = 10;
+    (narrow_float + 1) = 10;
+    declared_later() = 10;
+    declared_later = 10;
+
+    return 0;
+}
+
+int operator_and_print_cases() {
+    int bad_unary_minus = -"abc";
+    bool bad_unary_plus = +true;
+    bool bad_string_rel = "a" < "b";
+    bool bad_eq_types = 10 == "10";
+    bool bad_logical = 1 AND true;
+
+    print(void_returning_value_case());
+    print(null);
+    print(declared_later);
+
+    return 0;
+}
+
+int recovery_and_cascade_case() {
+    // Faulty initializer reports 1 error, but 'recovered' stays in scope as int
+    int recovered = "wrong_type";
+    int valid_use_after_faulty_init = recovered + 5;
+
+    // 'ghost_var' reports 1 error and suppresses cascading on '+' and '==',
+    // while independent error 'true + 5' on the RHS is still caught
+    bool combined = ((ghost_var + 10) == "text") AND (true + 5);
+
+    return valid_use_after_faulty_init;
+}

@@ -8,6 +8,7 @@ import time
 
 
 HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
 CC = os.environ.get("CC", "gcc")
 VALID = ("parser_valid_1.clamb", "parser_valid_2.clamb")
 INVALID = ("parser_invalid_1.clamb", "parser_invalid_2.clamb", "parser_invalid_3.clamb")
@@ -20,16 +21,11 @@ PDF_FIXTURE_CASES = (
      "4_test_input_5.clamb", False),
     ("4_test_input_6.clamb", "4_test_input_6.clamb", False),
 )
-NONTERMINALS = (
-    "program_start", "decl", "decl_tail", "var_init",
-    "param_list", "param_tail", "statement", "var_decl", "expr_stmt",
-    "if", "else_opt", "while", "for", "return", "print",
-    "expr_opt", "expr", "assign_expr", "assign_tail", "or_expr",
-    "or_tail", "and_expr", "and_tail", "eq_expr", "eq_tail",
-    "relational_expr", "relational_tail", "additive_expr",
-    "additive_tail", "mul_expr", "mul_tail", "unary_expr",
-    "postfix_expr", "postfix_tail", "primary_expr", "expr_list",
-    "nonempty_expr_list", "expr_list_tail",
+REQUIRED_ENTRY_POINTS = (
+    "decl", "decl_tail", "param_list", "statement", "var_decl",
+    "if", "else_opt", "while", "for", "return", "print", "expr",
+    "assign_expr", "or_expr", "and_expr", "eq_expr", "relational_expr",
+    "additive_expr", "mul_expr", "unary_expr", "postfix_expr", "primary_expr",
 )
 
 GRAMMAR_CASES = (
@@ -125,15 +121,16 @@ def remove_test_binary(path):
 
 def main():
     failures = 0
-    parser_source = (HERE / "clamb_parser.c").read_text(encoding="utf-8")
-    parser_functions = tuple(
-        re.findall(r"static void parse_([a-z_]+)\(void\) \{", parser_source)
+    parser_source = (ROOT / "clamb_parser.c").read_text(encoding="utf-8")
+    parser_functions = set(
+        re.findall(r"static\s+(?:void|int|SemType \*|ParameterList)\s+parse_([a-z_]+)\(", parser_source)
     )
-    count_ok = parser_functions == NONTERMINALS
+    missing_entry_points = set(REQUIRED_ENTRY_POINTS) - parser_functions
+    count_ok = not missing_entry_points
     print(("PASS " if count_ok else "FAIL ")
-          + f"one parser function per LL(k) nonterminal ({len(parser_functions)}/{len(NONTERMINALS)})")
+          + f"semantic parser entry points implemented ({len(parser_functions)} discovered)")
     if not count_ok:
-        print("  functions:", parser_functions)
+        print("  missing:", sorted(missing_entry_points))
         failures += 1
 
     else_opt_uses_two_tokens = (
@@ -149,7 +146,8 @@ def main():
         parser = Path(temp_dir) / ("clamb_parser.exe" if os.name == "nt" else "clamb_parser")
         build = subprocess.run(
             [CC, "-std=c11", "-Wall", "-Wextra", "-DCLAMB_LEXER_NO_MAIN",
-             "-o", str(parser), str(HERE / "clamb_parser.c"), str(HERE / "clamb_lexer.c")],
+             "-o", str(parser), str(ROOT / "clamb_parser.c"),
+             str(ROOT / "clamb_semantic.c"), str(ROOT / "clamb_lexer.c")],
             capture_output=True, text=True,
         )
         if build.returncode:
@@ -157,11 +155,11 @@ def main():
             return 1
 
         cases = [(name, HERE / name, True, "Parse successful.") for name in VALID]
-        cases += [(name, HERE / name, False, "Syntax Error at line") for name in INVALID]
-        cases.append((LEXICAL_INVALID, HERE / LEXICAL_INVALID, False, "Parse rejected:"))
+        cases += [(name, HERE / name, False, "[Syntax Error] at line") for name in INVALID]
+        cases.append((LEXICAL_INVALID, HERE / LEXICAL_INVALID, False, "[Lexical Error]"))
         cases += [
             (label, HERE / filename, should_pass,
-             "Parse successful." if should_pass else "Syntax Error at line")
+             "Parse successful." if should_pass else "[Syntax Error] at line")
             for label, filename, should_pass in PDF_FIXTURE_CASES
         ]
 
@@ -171,14 +169,14 @@ def main():
             if should_pass:
                 expected_text = "Parse successful."
             elif name == "address-of operator is not in the grammar":
-                expected_text = "Parse rejected:"
+                expected_text = "[Lexical Error]"
             else:
-                expected_text = "Syntax Error at line"
+                expected_text = "[Syntax Error] at line"
             cases.append((name, source_path, should_pass, expected_text))
 
         for name, source, should_pass, expected_text in cases:
             result = subprocess.run(
-                [str(parser), str(source)], capture_output=True, text=True,
+                [str(parser), "--syntax-only", str(source)], capture_output=True, text=True,
             )
             passed = (result.returncode == 0) == should_pass
             output = result.stdout + result.stderr

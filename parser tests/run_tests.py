@@ -2,7 +2,7 @@ import subprocess, re, sys, os, tempfile
 import shutil
 HERE = os.path.dirname(os.path.abspath(__file__))
 def find_bin():
-    """Usage: python run_tests.py [path-to-compiled-lexer]   (or set CLAMB_BIN)"""
+    """Usage: python "parser tests/run_tests.py" [path-to-compiled-lexer] (or set CLAMB_BIN)."""
     cands = [sys.argv[1]] if len(sys.argv) > 1 else []
     if os.environ.get("CLAMB_BIN"): cands.append(os.environ["CLAMB_BIN"])
     for d in (HERE, os.getcwd()):
@@ -12,7 +12,7 @@ def find_bin():
         if os.path.isfile(c): return os.path.abspath(c)
     sys.exit("Compiled lexer not found. Build it first, e.g.:\n"
              "    gcc -std=c11 -Wall -Wextra -o clamb_lexer clamb_lexer.c\n"
-             "then run:  python run_tests.py clamb_lexer")
+             "then run:  python \"parser tests/run_tests.py\" clamb_lexer")
 BIN = find_bin()
 print("Testing binary:", BIN, "\n")
 def run(src, stdin=False):
@@ -24,8 +24,8 @@ def run(src, stdin=False):
         p = subprocess.run([BIN, n], capture_output=True); os.unlink(n)
     text = p.stdout.decode('latin-1').replace('\r\n', '\n').split('\n',2)[2]  # Windows text-mode stdout uses CRLF
     toks = [(m.group(1), m.group(2)) for m in re.finditer(r'^<(\w+)\s*, (.*?)>$', text, re.M|re.S)]
-    errs = [l for l in p.stderr.decode('latin-1').splitlines() if l.startswith('Lexical Error')]
-    other_err = [l for l in p.stderr.decode('latin-1').splitlines() if l and not l.startswith('Lexical Error')]
+    errs = [l for l in p.stderr.decode('latin-1').splitlines() if l.startswith('[Lexical Error]')]
+    other_err = [l for l in p.stderr.decode('latin-1').splitlines() if l and not l.startswith('[Lexical Error]')]
     return toks, errs, other_err, p.returncode
 
 I,D,B = 'identifier','data_type','boolean_literal'

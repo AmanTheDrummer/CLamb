@@ -375,19 +375,30 @@ static void init_transition_table(void) {
 /* ================================================================== */
 static FILE *src;
 static int line_number = 1;
+static int column_number = 1;
+static int last_char_line = 1;
+static int last_char_column = 1;
 static int lexical_error_count;
 
 // Reads the next character from the input stream, updating the line number if a newline is encountered.
 static int next_char(void) {
     int c = fgetc(src);
-    if (c == '\n') line_number++;
+    last_char_line = line_number;
+    last_char_column = column_number;
+    if (c == '\n') {
+        line_number++;
+        column_number = 1;
+    } else if (c != EOF) {
+        column_number++;
+    }
     return c;
 }
 
 // basically its the lookahed function that pushes back the character to the input stream
 static void push_back(int c) {
     if (c == EOF) return;
-    if (c == '\n') line_number--;
+    line_number = last_char_line;
+    column_number = last_char_column;
     ungetc(c, src);
 }
 
@@ -409,42 +420,43 @@ static void esc(const char *lx, char *out, size_t n) {
 
 // Prints a diagnostic message for a malformed lexeme, based on the state it was in when the error was detected.
 // These are case specific hence handled using switch cases.
-static void report_error(State from, const char *raw_lexeme, int c, int at_line) {
+static void report_error(State from, const char *raw_lexeme, int c,
+                         int at_line, int at_column) {
     lexical_error_count++;
     char lexeme[2 * MAX_LEXEME + 4];
     esc(raw_lexeme, lexeme, sizeof lexeme);
     switch (from) {
         case S3:
-            fprintf(stderr, "Lexical Error (line %d): malformed float literal '%s' "
-                    "(digit required after '.')\n", at_line, lexeme);
+                fprintf(stderr, "[Lexical Error] at line %d, column %d: malformed float literal '%s' "
+                    "(digit required after '.')\n", at_line, at_column, lexeme);
             break;
         case S4:
-            fprintf(stderr, "Lexical Error (line %d): invalid float literal '%s' "
-                    "followed by a letter\n", at_line, lexeme);
+                fprintf(stderr, "[Lexical Error] at line %d, column %d: invalid float literal '%s' "
+                    "followed by a letter\n", at_line, at_column, lexeme);
             break;
         case S5:
-            fprintf(stderr, "Lexical Error (line %d): unterminated string literal '%s'\n",
-                    at_line, lexeme);
+                fprintf(stderr, "[Lexical Error] at line %d, column %d: unterminated string literal '%s'\n",
+                    at_line, at_column, lexeme);
             break;
         case S6:
-            fprintf(stderr, "Lexical Error (line %d): empty or unterminated char "
-                    "literal\n", at_line);
+                fprintf(stderr, "[Lexical Error] at line %d, column %d: empty or unterminated char "
+                    "literal\n", at_line, at_column);
             break;
         case S7:
-            fprintf(stderr, "Lexical Error (line %d): malformed/unterminated char "
-                    "literal '%s'\n", at_line, lexeme);
+                fprintf(stderr, "[Lexical Error] at line %d, column %d: malformed/unterminated char "
+                    "literal '%s'\n", at_line, at_column, lexeme);
             break;
         case S11:
-            fprintf(stderr, "Lexical Error (line %d): '!' is not a valid standalone "
-                    "token (expected '!=')\n", at_line);
+                fprintf(stderr, "[Lexical Error] at line %d, column %d: '!' is not a valid standalone "
+                    "token (expected '!=')\n", at_line, at_column);
             break;
         default: /* S0: a single unrecognized character */
             if (c >= 32 && c < 127)
-                fprintf(stderr, "Lexical Error (line %d): unrecognized character '%c'\n",
-                        at_line, c);
+                fprintf(stderr, "[Lexical Error] at line %d, column %d: unrecognized character '%c'\n",
+                    at_line, at_column, c);
             else
-                fprintf(stderr, "Lexical Error (line %d): unrecognized character "
-                        "(byte 0x%02X)\n", at_line, (unsigned)c & 0xFF);
+                fprintf(stderr, "[Lexical Error] at line %d, column %d: unrecognized character "
+                    "(byte 0x%02X)\n", at_line, at_column, (unsigned)c & 0xFF);
     }
 }
 
@@ -456,6 +468,9 @@ void clamb_lexer_init(FILE *input) {
     init_transition_table();
     src = input;
     line_number = 1;
+    column_number = 1;
+    last_char_line = 1;
+    last_char_column = 1;
     lexical_error_count = 0;
 }
 
@@ -468,12 +483,16 @@ Token clamb_lexer_next_token(void) {
     char lexeme[MAX_LEXEME];
     int idx = 0;
     int start_line = line_number; /* line where the current token began */
+    int start_column = column_number;
 
     for (;;) {
         int c = next_char();
         CharClass cls = class_of(c);
         Transition t = table[state][cls];
-        if (state == S0) start_line = line_number; /* bookkeeping for diagnostics */
+        if (state == S0) {
+            start_line = last_char_line;
+            start_column = last_char_column;
+        }
 
         if (t.append && idx < MAX_LEXEME - 1) {
             lexeme[idx++] = (char)c;
@@ -487,7 +506,7 @@ Token clamb_lexer_next_token(void) {
            emitted for malformed lexemes; S_ERROR discards until resync. */
         if (t.next_state == S_ERROR && state != S_ERROR) {
             lexeme[idx] = '\0';
-            report_error(state, lexeme, c, start_line);
+            report_error(state, lexeme, c, start_line, start_column);
         }
 
         if (t.accept) {
@@ -499,6 +518,7 @@ Token clamb_lexer_next_token(void) {
             strncpy(tok.lexeme, lexeme, MAX_LEXEME - 1);
             tok.lexeme[MAX_LEXEME - 1] = '\0';
             tok.line = start_line;
+            tok.column = start_column;
             return tok;
         }
 

@@ -1,0 +1,88 @@
+int undeclared_name_case() {
+    return missing_name;
+}
+
+int duplicate_declaration_case() {
+    int value = 1;
+    float value = 2.0;
+    return 0;
+}
+
+int incompatible_initializer_case() {
+    bool ready = 1;
+    return 0;
+}
+
+int incompatible_assignment_case() {
+    bool ready = false;
+    ready = 1;
+    return 0;
+}
+
+int incompatible_operator_case() {
+    return true + 1;
+}
+
+int expected_one_argument(int value) {
+    return value;
+}
+
+int wrong_argument_count_case() {
+    return expected_one_argument();
+}
+
+int expected_bool_argument(bool value) {
+    return 0;
+}
+
+int wrong_argument_type_case() {
+    return expected_bool_argument(1);
+}
+
+int invalid_return_case() {
+    return "not an int";
+}
+
+int non_boolean_if_case() {
+    if (1) {
+        return 1;
+    }
+    return 0;
+}
+
+int non_boolean_while_case() {
+    while (1) {
+        return 1;
+    }
+    return 0;
+}
+
+int non_boolean_for_case() {
+    for (; 1; ) {
+        return 1;
+    }
+    return 0;
+}
+
+int non_callable_case() {
+    int value = 1;
+    return value();
+}
+
+int out_of_scope_case() {
+    {
+        int hidden = 1;
+    }
+    return hidden;
+}
+
+int parameter_local_collision_case(int parameter) {
+    int parameter = 1;
+    return 0;
+}
+
+int cascade_suppression_case() {
+    int from_undeclared = missing_for_cascade + true;
+    int from_invalid_operator = true + 1;
+    return from_undeclared + from_invalid_operator;
+}

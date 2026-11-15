@@ -1,0 +1,56 @@
+float accept_float(float value) {
+    return value;
+}
+
+string accept_string(string value) {
+    return value;
+}
+
+float return_widened_float() {
+    int value = 5;
+    return value;
+}
+
+string return_widened_string() {
+    char value = 'c';
+    return value;
+}
+
+float scope_and_conversion(int seed, char initial) {
+    int value = seed;
+    float widened = value;
+    string text = initial;
+    {
+        float value = 4.0;
+        {
+            string value = "inner";
+            bool ready = value + "!" == "inner!";
+            if (ready) {
+                print(text + "!", widened);
+            }
+        }
+        bool positive = value > 3.0;
+        if (positive) {
+            print(value);
+        }
+    }
+    int restored_value = value;
+    float argument_float = accept_float(seed);
+    string argument_string = accept_string(initial);
+    if (argument_float >= 0.0) {
+        while (false) {
+            argument_float = argument_float - 1.0;
+        }
+    }
+    for (; seed > 0; seed = seed - 1) {
+        text = text + "x";
+    }
+    return restored_value;
+}
+
+int main() {
+    float result = scope_and_conversion(3, 'a');
+    string label = return_widened_string();
+    print(result, label);
+    return 0;
+}

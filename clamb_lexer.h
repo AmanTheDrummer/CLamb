@@ -25,6 +25,7 @@ typedef struct {
     TokenType type;
     char lexeme[MAX_LEXEME];
     int line;
+    int column;
 } Token;
 
 void clamb_lexer_init(FILE *input);

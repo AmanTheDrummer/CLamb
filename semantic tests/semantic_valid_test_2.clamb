@@ -1,0 +1,30 @@
+int factorial(int n) {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+int calculate(int base, bool enabled) {
+    int result = base;
+    {
+        int base = 2;
+        {
+            bool positive = (base + result) > 0;
+            if (enabled AND positive) {
+                result = result + base;
+            }
+        }
+    }
+    return result;
+}
+
+int main() {
+    int value = factorial(5);
+    bool active = value > 0;
+    if (active) {
+        value = calculate(value, active);
+    }
+    print(value);
+    return value;
+}

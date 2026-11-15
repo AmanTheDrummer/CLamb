@@ -1,0 +1,6 @@
+int main() {
+    int first = missing + true;
+    bool second = 1;
+    int third = 2.0 * 2;
+    return "bad return";
+}
