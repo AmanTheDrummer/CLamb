@@ -1,61 +1,67 @@
-# CLamb Grammar and Parser Review
+# Revised CLamb Grammar and Parser
 
-## Result
+The parser implements the final right-recursive LL(k) grammar in
+`Revised Grammar & Parser - CLamb.pdf`. It has one `parse_*` function for
+each of the 38 nonterminals in that production list. The parser support
+functions, lookahead, and program entry point are not grammar productions.
 
-Comparison against `Grammar & Parser - CLamb.pdf` confirms that the parser
-follows its LL(1) productions, including the recursive postfix tail. A chained
-call/index expression is included in the valid parser fixtures. The PDF's
-`FIRST_STMT` includes `FIRST_EXPR`; the parser's expression-start check covers
-those terminals, including unary starters. The FIRST/FOLLOW entries present in
-the PDF match the productions, but six statement nonterminals are still missing
-from its table; their sets are listed below.
+## Program structure and declarations
 
-## Missing FIRST/FOLLOW Rows
+- A program contains zero or more top-level declarations followed by EOF.
+- A declaration is a variable declaration or a function declaration.
+- Declaration heads contain a data type and identifier only. Variables may
+  have an initializer or neither; function declarations have a parameter list
+  and a brace-delimited body.
+- Parameters are data-type/identifier pairs. Function declarations are only
+  allowed at the top level.
+- Blocks contain zero or more statements, including local variable
+  declarations and nested blocks.
 
-All six nonterminals below have `FOLLOW = FIRST_STMT ∪ {r_brace}`, since each
-is an alternative of `<Statement>` in `<StmtList>`.
+Pointers, array declarations/indexing, address-of, `malloc`, and `free` are
+not part of the revised grammar. The lexer treats `&`, `[` and `]` as invalid
+characters; `malloc` and `free` are ordinary identifiers.
 
-| Nonterminal | FIRST |
-| --- | --- |
-| `<ExprStmt>` | `FIRST_EXPR ∪ {semicolon}` |
-| `<WhileStmt>` | `{kw_while}` |
-| `<ForStmt>` | `{kw_for}` |
-| `<ReturnStmt>` | `{kw_return}` |
-| `<PrintStmt>` | `{kw_print}` |
-| `<FreeStmt>` | `{kw_free}` |
+## Statements and expressions
 
-The parser already dispatches on these terminals and accepts expression and
-empty statements as specified, so no parser change is required for these rows.
+- Statement forms are variable declarations, blocks, expression/empty
+  statements, `if`/`else`, `while`, `for`, `return`, and `print`.
+- `else_opt` uses k=2 lookahead for `(kw_else, l_brace)` or
+  `(kw_else, kw_if)`. Other lookahead pairs select epsilon unless the first
+  token is `kw_else`, in which case the parser reports a malformed `else`.
+- Expressions follow the grammar's precedence levels: right-associative
+  assignment, logical OR, logical AND, equality, relational, additive,
+  multiplicative, unary, and postfix/primary expressions.
+- Unary operators are `logical_not` and `add_op`; `asterisk` is supported as
+  a multiplicative operator only.
+- Postfix calls may be chained. Expression lists may be empty in call and
+  `print` argument positions. Expression statements require a trailing
+  semicolon.
+- Lambdas use the same parameter-list and block forms as documented.
 
-## Terminal Mapping
+The parser implements syntax only; it does not validate types, assignment
+targets, or other semantic constraints.
 
-- Grammar terminals `logical_and`, `logical_or`, and `logical_not` map to lexer
-  token types `TOK_AND_OP`, `TOK_OR_OP`, and `TOK_NOT_OP`.
-- `relational_eq`, `relational_noteq`, `relational_less`, `relational_lesseq`,
-  `relational_greater`, and `relational_greatereq` map respectively to
-  `TOK_EQ_OP`, `TOK_NE_OP`, `TOK_LT_OP`, `TOK_LE_OP`, `TOK_GT_OP`, and
-  `TOK_GE_OP`.
-- Grammar `<MulOp>` includes both `mul_op` and `asterisk`; the parser accepts
-  `TOK_MUL_OP` and `TOK_ASTERISK` at the multiplicative level.
+## Lexer token mapping
 
-## Scope Preserved from the PDF
+- `logical_and`, `logical_or`, and `logical_not` map to the corresponding
+  logical token types.
+- Equality and relational terminals map to `relational_eq`,
+  `relational_noteq`, `relational_less`, `relational_lesseq`,
+  `relational_greater`, and `relational_greatereq`.
+- `mul_op` and `asterisk` are both accepted as multiplicative operators.
+- `add_op` supplies both additive and unary `+`/`-` operators.
 
-- A program is a list of declarations only. Top-level statements are rejected;
-  `4_test_input_2.clamb` includes top-level statements and is not a valid program
-  under the submitted grammar.
-- Declarations inside blocks use the unified declaration production from the
-  LL(1) version, which also permits nested function declarations as the PDF
-  notes.
-- `<PostfixTail>` is recursive, so a postfix expression may have any sequence
-  of call and index suffixes. The parser consumes suffixes repeatedly, including
-  mixed chains such as `a[0](x)[1]`.
-- Statements include expression statements and empty statements. The parser
-  distinguishes these with `FIRST_EXPR` and `semicolon`, as specified.
-- The assignment production permits any logical-OR expression on the left of
-  `=`. Restricting assignments to assignable locations (such as identifiers or
-  indexed expressions) is a semantic constraint not enforced by this grammar.
+## Verification coverage
 
-The parser follows the submitted syntax rather than silently broadening these
-rules. Syntax diagnostics include the source line, expected construct, and
-actual token. Lexical errors are also fatal to the parser result even when
-error recovery allows the remaining token sequence to parse.
+`parser_tests.py` builds the parser in a temporary directory and checks valid,
+invalid, and lexical-error cases. It exercises declarations, lambda bodies,
+control flow, empty `for` clauses, chained function calls, and grammar
+rejections for nested function declarations, top-level statements, malformed
+parameter lists, invalid `else` continuations, pointers, arrays, indexing,
+and address-of. It also checks one parser function per LL(k) nonterminal and
+that `else_opt` uses the second lookahead token.
+
+The PDF lists `4_test_input_3.clamb` and `4_test_input_5.clamb` as valid
+fixtures, but their current contents use arrays and pointers excluded by the
+revised grammar. The integration tests therefore expect these legacy fixtures
+to be rejected.

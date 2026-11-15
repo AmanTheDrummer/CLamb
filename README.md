@@ -52,18 +52,22 @@ Diagnostics are written to standard error. A malformed input reports a lexical e
 ## Recognized tokens
 
 - **Data types:** `int`, `float`, `char`, `bool`, `string`, `void`, `auto`
-- **Keywords:** `if`, `else`, `for`, `while`, `return`, `lamb`, `null`, `print`, `malloc`, `free`
+- **Keywords:** `if`, `else`, `for`, `while`, `return`, `lamb`, `null`, `print`
 - **Boolean literals:** `true`, `false`
-- **Logical operators:** `AND`, `OR`, `NOT` are tokenized as distinct `and_op`, `or_op`, and `not_op` classes
+- **Logical operators:** `AND`, `OR`, `NOT` are tokenized as `logical_and`, `logical_or`, and `logical_not`
 - **Identifiers:** letters, digits, and `_` after the initial character; the specified digit-led forms such as `2sum` are also accepted
 - **Number literals:** integers and floats such as `7` and `3.14`
 - **Character literals:** `'a'`
 - **String literals:** `"hello world"`
-- **Operators:** `+`, `-`, `*`, `/`, `%`, `&`, `=`, `<`, `>`, `!` combinations `==`, `!=`, `<=`, `>=` are tokenized as `eq_op`, `ne_op`, `lt_op`, `le_op`, `gt_op`, `ge_op`, and `assignment_op`
-- **Punctuators:** `(` `)` `{` `}` `[` `]` `;` `,`
+- **Operators:** `+`/`-` (`add_op`), `*` (`asterisk`), `/`/`%` (`mul_op`), `=` (`assignment_op`), and comparisons `==`, `!=`, `<`, `>`, `<=`, `>=` (`relational_eq`, `relational_noteq`, `relational_less`, `relational_greater`, `relational_lesseq`, `relational_greatereq`)
+- **Punctuators:** `(` `)` `{` `}` `;` `,`
 - **Comments:** `//` through the end of the line
 
 Whitespace is ignored. The lexer is table-driven: recognition and error transitions come from the DFA in `clamb_lexer.c`.
+
+Pointers, arrays, address-of, and memory-management keywords are outside the
+revised language. `&`, `[` and `]` are reported as unrecognized characters;
+`malloc` and `free` are ordinary identifiers.
 
 ## Tests
 
@@ -91,11 +95,12 @@ Example inputs and expected diagnostics are included in:
 
 ## Specification references
 
-- `Lexical Specification - CLamb (1).pdf` defines the token rules and DFA behavior.
+- `Lexical Specification - CLamb.pdf` defines the token rules and DFA behavior.
+- `Revised Grammar & Parser - CLamb.pdf` defines the reduced LL(k) grammar.
 - `Compiler Construction Project Proposal Aman.pdf` describes the planned CLamb language and its broader parser/compiler features.
 - `2_dfa_transition_table.md` documents the implemented DFA in readable table form.
 
-Type checking, code generation, and the semantics of lambdas, arrays, and pointers belong to later compiler stages proposed in the project document.
+Type checking, code generation, and the semantics of lambdas belong to later compiler stages proposed in the project document.
 
 ## Parser
 
@@ -116,17 +121,24 @@ The parser consumes the lexer's `Token` API from `clamb_lexer.h`. Syntax errors
 include the line, expected construct, and found token. Lexical errors are
 reported by the lexer and cause the overall parse to fail.
 
-Run the parser integration tests, which build the parser executable
-and exercise two valid programs, three invalid programs (including a
-top-level statement, which the supplied grammar excludes), and a lexical-error
-case:
+Run the parser integration tests. They build the parser in a temporary
+directory and exercise the valid and invalid fixtures, a lexical-error case,
+and focused cases for the revised grammar (including top-level-only function
+declarations, recursive functions, lambda expressions, control flow, chained
+calls, rejection of pointers and arrays, LL(k) nonterminal/function-count
+parity, and the `else_opt` k=2 lookahead):
 
 ```text
 python parser_tests.py
 ```
 
-The recorded output is in `parser_test_results.txt`.
+The recorded output is in `parser_test_results.txt`. The grammar audit is in
+`parser_grammar_review.md`.
 
-The grammar audit and the deliberate one-token lookahead refinements are
-documented in `parser_grammar_review.md`. The lexer remains independently
-buildable with the command above in the lexer section.
+The PDF lists `4_test_input_3.clamb` and `4_test_input_5.clamb` as valid
+fixtures, but their current contents use arrays and pointers. The reduced
+grammar excludes these forms, so the integration tests verify that both are
+rejected.
+
+The lexer remains independently buildable with the command above in the lexer
+section.

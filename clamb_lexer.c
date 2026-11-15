@@ -54,10 +54,9 @@ typedef enum {
     CLASS_LESS, CLASS_GREATER, 
     CLASS_BANG, CLASS_SLASH,
     CLASS_ADDSUB, CLASS_STAR, 
-    CLASS_PERCENT, CLASS_AMP,
+    CLASS_PERCENT,
     CLASS_LPAREN, CLASS_RPAREN, 
     CLASS_LBRACE, CLASS_RBRACE,
-    CLASS_LBRACKET, CLASS_RBRACKET, 
     CLASS_SEMI, CLASS_COMMA, 
     CLASS_DOT, CLASS_NEWLINE, 
     CLASS_WS, CLASS_OTHER, 
@@ -99,8 +98,6 @@ const char *clamb_token_type_name(TokenType t) {
         case TOK_KW_LAMB:         return "kw_lamb";
         case TOK_KW_NULL:         return "kw_null";
         case TOK_KW_PRINT:        return "kw_print";
-        case TOK_KW_MALLOC:       return "kw_malloc";
-        case TOK_KW_FREE:         return "kw_free";
         case TOK_IDENTIFIER:      return "identifier";
         case TOK_INTEGER_LITERAL: return "integer_literal";
         case TOK_FLOAT_LITERAL:   return "float_literal";
@@ -110,23 +107,20 @@ const char *clamb_token_type_name(TokenType t) {
         case TOK_ADD_OP:          return "add_op";
         case TOK_MUL_OP:          return "mul_op";
         case TOK_ASTERISK:        return "asterisk";
-        case TOK_AND_OP:          return "and_op";
-        case TOK_OR_OP:           return "or_op";
-        case TOK_NOT_OP:          return "not_op";
-        case TOK_EQ_OP:           return "eq_op";
-        case TOK_NE_OP:           return "ne_op";
-        case TOK_LT_OP:           return "lt_op";
-        case TOK_LE_OP:           return "le_op";
-        case TOK_GT_OP:           return "gt_op";
-        case TOK_GE_OP:           return "ge_op";
+        case TOK_AND_OP:          return "logical_and";
+        case TOK_OR_OP:           return "logical_or";
+        case TOK_NOT_OP:          return "logical_not";
+        case TOK_EQ_OP:           return "relational_eq";
+        case TOK_NE_OP:           return "relational_noteq";
+        case TOK_LT_OP:           return "relational_less";
+        case TOK_LE_OP:           return "relational_lesseq";
+        case TOK_GT_OP:           return "relational_greater";
+        case TOK_GE_OP:           return "relational_greatereq";
         case TOK_ASSIGNMENT_OP:   return "assignment_op";
-        case TOK_ADDRESS_OP:      return "address_op";
         case TOK_L_PAREN:         return "l_paren";
         case TOK_R_PAREN:         return "r_paren";
         case TOK_L_BRACE:         return "l_brace";
         case TOK_R_BRACE:         return "r_brace";
-        case TOK_L_BRACKET:       return "l_bracket";
-        case TOK_R_BRACKET:       return "r_bracket";
         case TOK_SEMICOLON:       return "semicolon";
         case TOK_COMMA:           return "comma";
         case TOK_EOF:             return "EOF";
@@ -148,8 +142,6 @@ static const KeywordEntry keyword_table[] = {
     {"lamb",   TOK_KW_LAMB},
     {"null",   TOK_KW_NULL},
     {"print",  TOK_KW_PRINT},
-    {"malloc", TOK_KW_MALLOC},
-    {"free",   TOK_KW_FREE},
 };
 static const int num_keyword_entries = (int)(sizeof(keyword_table) / sizeof(keyword_table[0]));
 
@@ -197,13 +189,10 @@ static void init_char_classes(void) {
     char_class_of[(unsigned char)'-']  = CLASS_ADDSUB;
     char_class_of[(unsigned char)'*']  = CLASS_STAR;
     char_class_of[(unsigned char)'%']  = CLASS_PERCENT;
-    char_class_of[(unsigned char)'&']  = CLASS_AMP;
     char_class_of[(unsigned char)'(']  = CLASS_LPAREN;
     char_class_of[(unsigned char)')']  = CLASS_RPAREN;
     char_class_of[(unsigned char)'{']  = CLASS_LBRACE;
     char_class_of[(unsigned char)'}']  = CLASS_RBRACE;
-    char_class_of[(unsigned char)'[']  = CLASS_LBRACKET;
-    char_class_of[(unsigned char)']']  = CLASS_RBRACKET;
     char_class_of[(unsigned char)';']  = CLASS_SEMI;
     char_class_of[(unsigned char)',']  = CLASS_COMMA;
     char_class_of[(unsigned char)'.']  = CLASS_DOT;
@@ -280,13 +269,10 @@ static void init_transition_table(void) {
     set(S0, CLASS_ADDSUB,     S0,  1, 0, 1, TOK_ADD_OP);
     set(S0, CLASS_STAR,       S0,  1, 0, 1, TOK_ASTERISK);
     set(S0, CLASS_PERCENT,    S0,  1, 0, 1, TOK_MUL_OP);
-    set(S0, CLASS_AMP,        S0,  1, 0, 1, TOK_ADDRESS_OP);
     set(S0, CLASS_LPAREN,     S0,  1, 0, 1, TOK_L_PAREN);
     set(S0, CLASS_RPAREN,     S0,  1, 0, 1, TOK_R_PAREN);
     set(S0, CLASS_LBRACE,     S0,  1, 0, 1, TOK_L_BRACE);
     set(S0, CLASS_RBRACE,     S0,  1, 0, 1, TOK_R_BRACE);
-    set(S0, CLASS_LBRACKET,   S0,  1, 0, 1, TOK_L_BRACKET);
-    set(S0, CLASS_RBRACKET,   S0,  1, 0, 1, TOK_R_BRACKET);
     set(S0, CLASS_SEMI,       S0,  1, 0, 1, TOK_SEMICOLON);
     set(S0, CLASS_COMMA,      S0,  1, 0, 1, TOK_COMMA);
     set(S0, CLASS_NEWLINE,    S0,  0, 0, 0, TOK_NONE);  /* skip           */
@@ -374,9 +360,9 @@ static void init_transition_table(void) {
     CharClass restart_classes[] = {
         CLASS_LETTER, CLASS_DIGIT, CLASS_UNDERSCORE, CLASS_DQUOTE, CLASS_SQUOTE,
         CLASS_EQUALS, CLASS_LESS, CLASS_GREATER, CLASS_BANG, CLASS_SLASH,
-        CLASS_ADDSUB, CLASS_STAR, CLASS_PERCENT, CLASS_AMP,
+        CLASS_ADDSUB, CLASS_STAR, CLASS_PERCENT,
         CLASS_LPAREN, CLASS_RPAREN, CLASS_LBRACE, CLASS_RBRACE,
-        CLASS_LBRACKET, CLASS_RBRACKET, CLASS_SEMI, CLASS_COMMA
+        CLASS_SEMI, CLASS_COMMA
     };
     for (size_t i = 0; i < sizeof(restart_classes)/sizeof(restart_classes[0]); i++)
         set(S_ERROR, restart_classes[i], S0, 0, 1, 0, TOK_NONE);

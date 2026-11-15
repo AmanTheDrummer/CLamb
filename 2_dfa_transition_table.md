@@ -38,14 +38,16 @@ Per the updated CLamb Lexical Specification, keywords are **not** interchangeabl
 | `lamb` | `kw_lamb` |
 | `null` | `kw_null` |
 | `print` | `kw_print` |
-| `malloc` | `kw_malloc` |
-| `free` | `kw_free` |
 
-This only changes which class the S1 reserved-word lookup assigns; the DFA states, transitions, and every other token class are unchanged.
+Only the words listed above are keywords. In particular, `malloc` and `free`
+are ordinary identifiers in the reduced language.
 
 ## Character Classes
 
-`LETTER, DIGIT, UNDERSCORE, DQUOTE("), SQUOTE('), EQUALS(=), LESS(<), GREATER(>), BANG(!), SLASH(/), ADDSUB(+ or -), STAR(*), PERCENT(%), AMP(&), LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET, SEMI(;), COMMA(,), DOT(.), NEWLINE, WS(space/tab/CR), OTHER, EOF`
+`LETTER, DIGIT, UNDERSCORE, DQUOTE("), SQUOTE('), EQUALS(=), LESS(<), GREATER(>), BANG(!), SLASH(/), ADDSUB(+ or -), STAR(*), PERCENT(%), LPAREN, RPAREN, LBRACE, RBRACE, SEMI(;), COMMA(,), DOT(.), NEWLINE, WS(space/tab/CR), OTHER, EOF`
+
+`&`, `[` and `]` are not token classes; they fall into `OTHER` and trigger
+lexical errors when scanned from `S0`.
 
 ## Transition Table
 
@@ -67,8 +69,7 @@ Columns: **Next State** | **Append to lexeme?** | **Pushback (not consumed)?** |
 | ADDSUB | S0 | Y | N | **Yes** | `add_op` |
 | STAR | S0 | Y | N | **Yes** | `asterisk` |
 | PERCENT | S0 | Y | N | **Yes** | `mul_op` |
-| AMP | S0 | Y | N | **Yes** | `address_op` |
-| LPAREN…COMMA (8 classes) | S0 | Y | N | **Yes** | `l_paren`/`r_paren`/`l_brace`/`r_brace`/`l_bracket`/`r_bracket`/`semicolon`/`comma` (one per class) |
+| LPAREN…COMMA (6 classes) | S0 | Y | N | **Yes** | `l_paren`/`r_paren`/`l_brace`/`r_brace`/`semicolon`/`comma` (one per class) |
 | NEWLINE, WS | S0 | N | N | — | *(skip)* |
 | DOT, OTHER | **S_ERROR** | N | N | — | — |
 | EOF | S0 | N | N | **Yes** | `EOF` |
@@ -77,7 +78,7 @@ Columns: **Next State** | **Append to lexeme?** | **Pushback (not consumed)?** |
 | Class | Next | Append | Pushback | Accept | Token |
 |---|---|---|---|---|---|
 | LETTER, DIGIT, UNDERSCORE | S1 | Y | N | — | — |
-| *default (all other classes)* | S0 | N | **Y** | **Yes** | reserved-word lookup → `data_type` / one of `kw_if`,`kw_else`,`kw_for`,`kw_while`,`kw_return`,`kw_lamb`,`kw_null`,`kw_print`,`kw_malloc`,`kw_free` / `boolean_literal` / `and_op` / `or_op` / `not_op` / else `identifier` |
+| *default (all other classes)* | S0 | N | **Y** | **Yes** | reserved-word lookup → `data_type` / one of `kw_if`,`kw_else`,`kw_for`,`kw_while`,`kw_return`,`kw_lamb`,`kw_null`,`kw_print` / `boolean_literal` / `logical_and` / `logical_or` / `logical_not` / else `identifier` |
 | EOF | S0 | N | N | **Yes** | (same lookup) |
 
 ### S2 (Digit-initial)
@@ -128,28 +129,28 @@ Columns: **Next State** | **Append to lexeme?** | **Pushback (not consumed)?** |
 ### S8 (saw `=`)
 | Class | Next | Append | Pushback | Accept | Token |
 |---|---|---|---|---|---|
-| EQUALS | S0 | Y | N | **Yes** | `eq_op` (`==`) |
+| EQUALS | S0 | Y | N | **Yes** | `relational_eq` (`==`) |
 | *default* | S0 | N | **Y** | **Yes** | `assignment_op` (`=`) |
 | EOF | S0 | N | N | **Yes** | `assignment_op` |
 
 ### S9 (saw `<`)
 | Class | Next | Append | Pushback | Accept | Token |
 |---|---|---|---|---|---|
-| EQUALS | S0 | Y | N | **Yes** | `le_op` (`<=`) |
-| *default* | S0 | N | **Y** | **Yes** | `lt_op` (`<`) |
-| EOF | S0 | N | N | **Yes** | `lt_op` |
+| EQUALS | S0 | Y | N | **Yes** | `relational_lesseq` (`<=`) |
+| *default* | S0 | N | **Y** | **Yes** | `relational_less` (`<`) |
+| EOF | S0 | N | N | **Yes** | `relational_less` |
 
 ### S10 (saw `>`)
 | Class | Next | Append | Pushback | Accept | Token |
 |---|---|---|---|---|---|
-| EQUALS | S0 | Y | N | **Yes** | `ge_op` (`>=`) |
-| *default* | S0 | N | **Y** | **Yes** | `gt_op` (`>`) |
-| EOF | S0 | N | N | **Yes** | `gt_op` |
+| EQUALS | S0 | Y | N | **Yes** | `relational_greatereq` (`>=`) |
+| *default* | S0 | N | **Y** | **Yes** | `relational_greater` (`>`) |
+| EOF | S0 | N | N | **Yes** | `relational_greater` |
 
 ### S11 (saw `!`)
 | Class | Next | Append | Pushback | Accept | Token |
 |---|---|---|---|---|---|
-| EQUALS | S0 | Y | N | **Yes** | `ne_op` (`!=`) |
+| EQUALS | S0 | Y | N | **Yes** | `relational_noteq` (`!=`) |
 | *default (Other)* | **S_ERROR** | N | **Y** | — | — *(lone `!` invalid; diagnostic emitted)* |
 | EOF | **S_ERROR** | N | N | — | — *(diagnostic emitted)* |
 

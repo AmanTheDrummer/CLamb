@@ -1,15 +1,64 @@
+PASS one parser function per LL(k) nonterminal (38/38)
+PASS else_opt uses k=2 lookahead
 PASS parser_valid_1.clamb
   Parse successful.
 PASS parser_valid_2.clamb
   Parse successful.
 PASS parser_invalid_1.clamb
-  Syntax Error at line 1: expected a parameter declaration or ')' but found l_brace ('{')
+  Syntax Error at line 1: expected ')' after the parameter list but found l_brace ('{')
 PASS parser_invalid_2.clamb
   Syntax Error at line 2: expected an expression operand but found semicolon (';')
 PASS parser_invalid_3.clamb
   Syntax Error at line 1: expected a top-level declaration or end of file but found identifier ('x')
 PASS parser_invalid_lexical.clamb
   Lexical Error (line 2): unrecognized character '@'
+  Parse rejected: lexer reported 1 lexical error(s)
+PASS 4_test_input_4.clamb
+  Syntax Error at line 3: expected ')' after print arguments but found semicolon (';')
+PASS legacy 4_test_input_3.clamb uses removed pointers and arrays
+  Syntax Error at line 1: expected an identifier but found asterisk ('*')
+PASS legacy 4_test_input_5.clamb uses removed arrays and pointers
+  Lexical Error (line 9): unrecognized character '['
+  Lexical Error (line 9): unrecognized character ']'
+  Syntax Error at line 9: expected ';' after the declaration but found integer_literal ('10')
+PASS 4_test_input_6.clamb
+  Syntax Error at line 3: expected a top-level declaration or end of file but found identifier ('count')
+PASS empty program
+  Parse successful.
+PASS declarations, lambdas, control flow, and chained calls
+  Parse successful.
+PASS recursive functions and nested call expressions
+  Parse successful.
+PASS empty for clauses
+  Parse successful.
+PASS asterisk, division, and remainder are multiplicative
+  Parse successful.
+PASS chained call expression statement requires a semicolon
+  Parse successful.
+PASS chained call expression statement without a semicolon
+  Syntax Error at line 1: expected ';' after the expression but found r_brace ('}')
+PASS nested function declaration is not a statement
+  Syntax Error at line 1: expected ';' after the declaration but found l_paren ('(')
+PASS else must be followed by a block or if
+  Syntax Error at line 1: expected '{' or 'if' after 'else' but found identifier ('value')
+PASS top-level expression is not a declaration
+  Syntax Error at line 1: expected a top-level declaration or end of file but found identifier ('value')
+PASS trailing parameter comma
+  Syntax Error at line 1: expected a data type after ',' but found r_paren (')')
+PASS pointer declarator is not in the grammar
+  Syntax Error at line 1: expected an identifier but found asterisk ('*')
+PASS pointer dereference is not in the grammar
+  Syntax Error at line 1: expected ';' after return but found asterisk ('*')
+PASS array declarator is not in the grammar
+  Lexical Error (line 1): unrecognized character '['
+  Lexical Error (line 1): unrecognized character ']'
+  Syntax Error at line 1: expected ';' after the declaration but found integer_literal ('3')
+PASS index expression is not in the grammar
+  Lexical Error (line 1): unrecognized character '['
+  Lexical Error (line 1): unrecognized character ']'
+  Syntax Error at line 1: expected ';' after return but found integer_literal ('0')
+PASS address-of operator is not in the grammar
+  Lexical Error (line 1): unrecognized character '&'
   Parse rejected: lexer reported 1 lexical error(s)
 
 TOTAL FAILURES: 0

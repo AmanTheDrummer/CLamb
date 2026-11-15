@@ -1,4 +1,4 @@
-int global_var = 42;
+int *ptr[i] = 35;
 float global_float = 3.14;
 string msg = "Comprehensive CLamb Test";
 char letter = 'A';
